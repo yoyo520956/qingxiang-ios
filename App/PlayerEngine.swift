@@ -1,4 +1,5 @@
 import AVFoundation
+import AVFAudio
 import Combine
 import MediaPlayer
 import UIKit
@@ -29,7 +30,6 @@ final class PlayerEngine: ObservableObject {
         self.rate = Defaults.defaultRate()
 
         player.automaticallyWaitsToMinimizeStalling = true
-        player.preferredForwardBufferDuration = 60
         player.volume = 1.0
 
         addTimeObserver()
@@ -67,7 +67,6 @@ final class PlayerEngine: ObservableObject {
         guard let url = media.resolvedURL else { return }
         let item = AVPlayerItem(url: url)
         item.preferredForwardBufferDuration = 60
-        item.videoGravity = gravity
 
         itemObservation = item.observe(\.status, options: [.initial]) { [weak self] it, _ in
             guard let self else { return }
@@ -90,10 +89,10 @@ final class PlayerEngine: ObservableObject {
                     toleranceBefore: .zero,
                     toleranceAfter: .zero
                 )
-                self.player.setRate(self.rate, time: .zero)
+                self.player.setRate(self.rate, atHostTime: 0)
             }
         } else {
-            player.setRate(rate, time: .zero)
+            player.setRate(rate, atHostTime: 0)
         }
     }
 
@@ -103,14 +102,14 @@ final class PlayerEngine: ObservableObject {
         if player.timeControlStatus == .playing {
             player.pause()
         } else {
-            player.setRate(rate, time: .zero)
+            player.setRate(rate, atHostTime: 0)
         }
     }
 
     func setRate(_ r: Float) {
         rate = r
         if player.timeControlStatus == .playing {
-            player.setRate(r, time: .zero)
+            player.setRate(r, atHostTime: 0)
         }
         UserDefaults.standard.set(r, forKey: SettingsKeys.defaultRate)
     }
@@ -173,7 +172,7 @@ final class PlayerEngine: ObservableObject {
     private func setupRemote() {
         let c = MPRemoteCommandCenter.shared()
         c.playCommand.addTarget { [weak self] _ in
-            self?.player.setRate(self?.rate ?? 1.0, time: .zero)
+            self?.player.setRate(self?.rate ?? 1.0, atHostTime: 0)
             return .success
         }
         c.pauseCommand.addTarget { [weak self] _ in
