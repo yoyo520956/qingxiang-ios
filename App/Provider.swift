@@ -1,1 +1,125 @@
-m��
+import Foundation
+
+/// 一个"在线视频源"：用户在设置里填 endpoint，App 负责搜索/播放/下载管线。
+struct VideoProvider: Codable, Identifiable, Hashable {
+    var id: String
+    var name: String
+    var endpoint: String   // URL 模板，{q} 为关键词占位符
+    var key: String?       // 可选鉴权 key
+    var adult: Bool        // 是否成人源（需 18+ 锁）
+    var enabled: Bool
+}
+
+enum ProviderStore {
+    static func all() -> [VideoProvider] {
+        let url = URL.applicationSupportDirectory.appendingPathComponent("providers.json")
+        guard let d = try? Data(contentsOf: url) else { return presets }
+        return (try? JSONDecoder().decode([VideoProvider].self, from: d)) ?? presets
+    }
+
+    static func save(_ list: [VideoProvider]) {
+        let url = URL.applicationSupportDirectory.appendingPathComponent("providers.json")
+        if let d = try? JSONEncoder().encode(list) {
+            try? d.write(to: url, options: .atomic)
+        }
+    }
+
+    static var presets: [VideoProvider] {
+        [
+            VideoProvider(
+                id: "commons",
+                name: "Wikimedia Commons（内置，免费）",
+                endpoint: "https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch={q}%20filetype:video&srnamespace=6&format=json",
+                key: nil,
+                adult: false,
+                enabled: true
+            )
+        ]
+    }
+}
+
+/// 18+ 锁（设置里手动开）
+enum AdultGate {
+    private static let k = "adultGate18"
+    static var on: Bool {
+        get { UserDefaults.standard.bool(forKey: k) }
+        set { UserDefaults.standard.set(newValue, forKey: k) }
+    }
+}
+
+/// 走在线源搜索，归一化成 SearchHit
+enum ProviderKit {
+    static func search(_ p: VideoProvider, q: String) async throws -> [SearchHit] {
+        let kw = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? q
+        var ep = p.endpoint.replacingOccurrences(of: "{q}", with: kw)
+        if let key = p.key, !key.isEmpty {
+            ep += (ep.contains("?") ? "&" : "?") + "key=" + key
+        }
+        guard let url = URL(string: ep) else {
+            throw MediaSearch.SearchError(msg: "接口地址无效")
+        }
+        var req = URLRequest(url: url)
+        req.setValue("application/json, text/html;q=0.9", forValue: "Accept")
+        let (data, _) = try await URLSession.shared.data(for: req)
+        guard let root = try? JSONSerialization.jsonObject(with: data) else {
+            throw MediaSearch.SearchError(msg: "源没有返回可解析的数据")
+        }
+        return normalize(root, provider: p)
+    }
+
+    /// 兼容多种返回结构：根是数组 / {results:[]} / {data:[]} / Commons 的 {query:{search:[]}}
+    private static func normalize(_ root: Any, provider: VideoProvider) -> [SearchHit] {
+        let kind = provider.adult ? "adult" : "video"
+        var array: [[String: Any]]?
+        if let a = root as? [[String: Any]] {
+            array = a
+        } else if let obj = root as? [String: Any] {
+            for key in ["results", "data", "items", "videos", "media"] {
+                if let a = obj[key] as? [[String: Any]] {
+                    array = a
+                    break
+                }
+            }
+            // Commons 结构
+            if array == nil,
+               let query = obj["query"] as? [String: Any],
+               let a = query["search"] as? [[String: Any]] {
+                array = a
+            }
+        }
+        guard let arr = array else { return [] }
+
+        return arr.prefix(30).compactMap { item in
+            // 字段名做多套兜底
+            let title = (item["title"] ?? item["name"] ?? item["text"]) as? String ?? "未命名"
+            var link = (item["url"] ?? item["src"] ?? item["link"] ?? item["file"] ?? item["source"]) as? String
+            if link == nil, let t = item["title"] as? String, let idv = item["identifier"] as? String {
+                // Internet Archive 形态
+                link = "https://archive.org/download/\(idv)/"
+            }
+            guard let raw = link, !raw.isEmpty else { return nil }
+            var u = URLComponents(string: raw)
+            // 跳过明显不是直链的（.html 页面）
+            let host = u?.host ?? ""
+            _ = host
+            let path = u?.path ?? ""
+            let looksDirect = path.hasSuffix(".mp4") || path.hasSuffix(".m3u8")
+                || path.hasSuffix(".webm") || path.hasSuffix(".ogv")
+                || path.hasSuffix(".ogg") || path.hasSuffix(".mp3") || path.hasSuffix(".m4v")
+                || path.hasSuffix(".mov")
+            // 允许含 /download/ 的 archive.org 直链
+            let isArchiveDirect = raw.contains("archive.org/download")
+            if !looksDirect && !isArchiveDirect {
+                return nil
+            }
+            let sizeMB = ((item["size"] as? Double) ?? 0) / 1024 / 1024
+            return SearchHit(
+                id: title + raw,
+                title: title,
+                url: raw,
+                kind: kind,
+                sizeMB: Int(sizeMB)
+            )
+        }
+    }
+}
