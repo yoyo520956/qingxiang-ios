@@ -230,11 +230,6 @@ struct PlayerView: View {
                 } label: {
                     Image(systemName: "speedometer")
                 }
-                Button { engine.togglePiP() } label: {
-                    Image(systemName: "pip.enter")
-                }
-                AirPlayButton()
-                    .frame(width: 36, height: 32)
             }
             .font(.title3)
             .foregroundStyle(.white)
