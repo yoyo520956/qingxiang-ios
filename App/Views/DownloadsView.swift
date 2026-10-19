@@ -86,9 +86,10 @@ struct DownloadsView: View {
                         .foregroundStyle(.secondary)
                 }
                 HStack(spacing: 18) {
-                    if e.kind != "audio", e.status == .downloading {
+                    if e.status == .downloading {
                         Button("暂停") { dm.pause(e.id) }
-                    } else if e.status == .paused {
+                    }
+                    if e.status == .paused {
                         Button("继续") { dm.resume(e.id) }
                     }
                     Button("取消") { dm.cancel(e.id) }
