@@ -23,7 +23,7 @@ final class DownloadManager: NSObject, ObservableObject {
     @Published var entries: [Entry] = []
 
     private var httpTasks: [String: URLSessionDownloadTask] = [:]
-    private let session: URLSession
+    private lazy var session: URLSession = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
     private let downloadsDir: URL
     private let tmpDir: URL
     private let metaFile: URL
@@ -36,7 +36,6 @@ final class DownloadManager: NSObject, ObservableObject {
         super.init()
         try? FileManager.default.createDirectory(at: downloadsDir, withIntermediateDirectories: true)
         try? FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
-        session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
         loadMeta()
     }
 
