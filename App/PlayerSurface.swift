@@ -1,5 +1,7 @@
+import AVFoundation
 import AVFAudio
 import SwiftUI
+import UIKit
 
 final class PlayerLayerHostView: UIView {
     var playerLayer: AVPlayerLayer?
