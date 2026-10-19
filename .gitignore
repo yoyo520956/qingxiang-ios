@@ -1,1 +1,4 @@
-m«ë
+build/
+DerivedData/
+*.xcodeproj
+.DS_Store
