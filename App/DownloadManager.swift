@@ -172,7 +172,7 @@ final class DownloadManager: NSObject, ObservableObject {
 
     private func finish(id: String, fileFrom: URL) {
         guard let idx = entries.firstIndex(where: { $0.id == id }) else { return }
-        let ext = URL(fileURLWithPath: entries[idx].url.absoluteString).pathExtension
+        let ext = URL(string: entries[idx].url)?.pathExtension ?? ""
         let finalExt = ext.isEmpty ? (entries[idx].kind == "audio" ? "mp3" : "mp4") : ext
         let finalURL = downloadsDir.appendingPathComponent(entries[idx].id + "." + finalExt)
         do {
