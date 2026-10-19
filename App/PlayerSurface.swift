@@ -1,5 +1,4 @@
 import AVFoundation
-import AVFAudio
 import SwiftUI
 import UIKit
 
@@ -10,7 +9,6 @@ final class PlayerLayerHostView: UIView {
         let l = AVPlayerLayer()
         l.player = player
         l.videoGravity = gravity
-        l.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         layer.addSublayer(l)
         playerLayer = l
         setNeedsLayout()
@@ -40,14 +38,4 @@ struct PlayerLayerView: UIViewRepresentable {
     func updateUIView(_ uiView: PlayerLayerHostView, context: Context) {
         uiView.setGravity(gravity)
     }
-}
-
-struct AirPlayButton: UIViewRepresentable {
-    func makeUIView(context: Context) -> AVRoutePickerView {
-        let v = AVRoutePickerView()
-        v.backgroundColor = .clear
-        return v
-    }
-
-    func updateUIView(_ uiView: AVRoutePickerView, context: Context) {}
 }
