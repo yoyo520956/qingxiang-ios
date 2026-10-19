@@ -1,5 +1,4 @@
 import AVFoundation
-import AVFAudio
 import Combine
 import MediaPlayer
 import UIKit
@@ -18,7 +17,6 @@ final class PlayerEngine: ObservableObject {
 
     private let itemID: UUID
     private let store: MediaStore
-    private let pip = AVPictureInPictureController()
     private var timeObserver: Any?
     private var itemObservation: NSKeyValueObservation?
     private var statusObservation: NSKeyValueObservation?
@@ -39,13 +37,6 @@ final class PlayerEngine: ObservableObject {
             }
         }
         setupRemote()
-        NotificationCenter.default.addObserver(
-            forName: .AVPictureInPictureDidStop,
-            object: pip,
-            queue: .main
-        ) { [weak self] _ in
-            self?.showControls = true
-        }
         NotificationCenter.default.addObserver(
             forName: UIApplication.willResignActiveNotification,
             object: nil,
@@ -89,10 +80,10 @@ final class PlayerEngine: ObservableObject {
                     toleranceBefore: .zero,
                     toleranceAfter: .zero
                 )
-                self.player.setRate(self.rate, atHostTime: 0)
+                self.player.setRate(self.rate, at: .zero)
             }
         } else {
-            player.setRate(rate, atHostTime: 0)
+            player.setRate(rate, at: .zero)
         }
     }
 
@@ -102,14 +93,14 @@ final class PlayerEngine: ObservableObject {
         if player.timeControlStatus == .playing {
             player.pause()
         } else {
-            player.setRate(rate, atHostTime: 0)
+            player.setRate(rate, at: .zero)
         }
     }
 
     func setRate(_ r: Float) {
         rate = r
         if player.timeControlStatus == .playing {
-            player.setRate(r, atHostTime: 0)
+            player.setRate(r, at: .zero)
         }
         UserDefaults.standard.set(r, forKey: SettingsKeys.defaultRate)
     }
@@ -126,14 +117,6 @@ final class PlayerEngine: ObservableObject {
             toleranceBefore: .positiveInfinity,
             toleranceAfter: .positiveInfinity
         )
-    }
-
-    func togglePiP() {
-        if pip.isInPictureInPicturePlayback {
-            pip.stopPictureInPicturePlayback()
-        } else {
-            pip.startPictureInPicturePlayback()
-        }
     }
 
     func setBrightness(_ v: Double) {
@@ -172,7 +155,7 @@ final class PlayerEngine: ObservableObject {
     private func setupRemote() {
         let c = MPRemoteCommandCenter.shared()
         c.playCommand.addTarget { [weak self] _ in
-            self?.player.setRate(self?.rate ?? 1.0, atHostTime: 0)
+            self?.player.setRate(self?.rate ?? 1.0, at: .zero)
             return .success
         }
         c.pauseCommand.addTarget { [weak self] _ in
