@@ -62,7 +62,7 @@ struct AddView: View {
         }
         .fileImporter(
             isPresented: $showFileImport,
-            allowedContentTypes: [UTType.movie, .video, .quickTimeMovie, .threeGPPMovie],
+            allowedContentTypes: [UTType.movie, .video],
             allowsMultipleSelection: true
         ) { result in
             handleFiles(result)
