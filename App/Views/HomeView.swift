@@ -176,8 +176,7 @@ struct SearchSection: View {
                         Text(h.title)
                             .font(.subheadline)
                             .lineLimit(1)
-                        Text(h.kind == "audio" ? "音乐" : "视频")
-                            + (h.sizeMB > 0 ? Text(" · \(h.sizeMB)MB") : Text(""))
+                        Text((h.kind == "audio" ? "音乐" : "视频") + (h.sizeMB > 0 ? " · \(h.sizeMB)MB" : ""))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
