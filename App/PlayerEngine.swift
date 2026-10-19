@@ -80,10 +80,10 @@ final class PlayerEngine: ObservableObject {
                     toleranceBefore: .zero,
                     toleranceAfter: .zero
                 )
-                self.player.setRate(self.rate, at: .zero)
+                self.player.rate = self.rate
             }
         } else {
-            player.setRate(rate, at: .zero)
+            player.rate = rate
         }
     }
 
@@ -93,14 +93,14 @@ final class PlayerEngine: ObservableObject {
         if player.timeControlStatus == .playing {
             player.pause()
         } else {
-            player.setRate(rate, at: .zero)
+            player.rate = rate
         }
     }
 
     func setRate(_ r: Float) {
         rate = r
         if player.timeControlStatus == .playing {
-            player.setRate(r, at: .zero)
+            player.rate = r
         }
         UserDefaults.standard.set(r, forKey: SettingsKeys.defaultRate)
     }
@@ -155,7 +155,7 @@ final class PlayerEngine: ObservableObject {
     private func setupRemote() {
         let c = MPRemoteCommandCenter.shared()
         c.playCommand.addTarget { [weak self] _ in
-            self?.player.setRate(self?.rate ?? 1.0, at: .zero)
+            self?.player.rate = self?.rate ?? 1.0
             return .success
         }
         c.pauseCommand.addTarget { [weak self] _ in
