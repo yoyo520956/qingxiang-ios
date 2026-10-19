@@ -16,46 +16,9 @@ struct AddView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("相册") {
-                    PhotosPicker(selection: $photoItems, matching: .videos, photoLibrary: .shared()) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "video.on.rectangle")
-                            Text("从相册选择视频")
-                        }
-                    }
-                    .disabled(importing)
-                    if importing {
-                        HStack {
-                            ProgressView()
-                            Text("导入中…")
-                        }
-                    }
-                }
-                Section("文件") {
-                    Button {
-                        showFileImport = true
-                    } label: {
-                        Label("导入视频文件", systemImage: "folder")
-                    }
-                }
-                .fileImporter(
-                    isPresented: $showFileImport,
-                    allowedTypes: [UTType.movie, .video, .mpeg4, .quickTimeMovie, .threeGPPMovie],
-                    allowsMultipleSelection: true
-                ) { result in
-                    handleFiles(result)
-                }
-                Section("在线链接") {
-                    TextField("http(s)://…/.mp4 或 .m3u8", text: $urlString)
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Button("添加在线片源") { addURL() }
-                        .disabled(urlString.trimmingCharacters(in: .whitespaces).isEmpty)
-                    Label("支持 MP4 / MOV / HLS(.m3u8) 等在线链接，长缓冲不卡顿", systemImage: "info.circle")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                albumSection
+                fileSection
+                onlineSection
             }
             .navigationTitle("加片")
             .onChange(of: photoItems) { newItems in
@@ -69,6 +32,58 @@ struct AddView: View {
         }
     }
 
+    @ViewBuilder
+    private var albumSection: some View {
+        Section("相册") {
+            PhotosPicker(selection: $photoItems, matching: .videos, photoLibrary: .shared()) {
+                HStack(spacing: 8) {
+                    Image(systemName: "video.on.rectangle")
+                    Text("从相册选择视频")
+                }
+            }
+            .disabled(importing)
+            if importing {
+                HStack {
+                    ProgressView()
+                    Text("导入中…")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var fileSection: some View {
+        Section("文件") {
+            Button {
+                showFileImport = true
+            } label: {
+                Label("导入视频文件", systemImage: "folder")
+            }
+        }
+        .fileImporter(
+            isPresented: $showFileImport,
+            allowedTypes: [UTType.movie, .video, .mpeg4, .quickTimeMovie, .threeGPPMovie],
+            allowsMultipleSelection: true
+        ) { result in
+            handleFiles(result)
+        }
+    }
+
+    @ViewBuilder
+    private var onlineSection: some View {
+        Section("在线链接") {
+            TextField("http(s)://…/.mp4 或 .m3u8", text: $urlString)
+                .keyboardType(.URL)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button("添加在线片源") { addURL() }
+                .disabled(urlString.trimmingCharacters(in: .whitespaces).isEmpty)
+            Label("支持 MP4 / MOV / HLS(.m3u8) 等在线链接，长缓冲不卡顿", systemImage: "info.circle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
     private func importPhotos(_ items: [PhotosPickerItem]) {
         guard !items.isEmpty else { return }
         importing = true
@@ -77,12 +92,7 @@ struct AddView: View {
             for it in items {
                 if let data = try? await it.loadTransferable(type: Data.self), data.count > 1024 {
                     let ts = Int(Date().timeIntervalSince1970)
-                    let name: String
-                    if #available(iOS 16.4, *), let sf = it.suggestedFilename {
-                        name = sf
-                    } else {
-                        name = "相册视频-\(ts)"
-                    }
+                    let name = "相册视频-\(ts)"
                     if let item = try? store.copyVideo(data: data, suggestedName: name, sourceLabel: "相册") {
                         count += 1
                         ThumbnailGen.generate(for: item) { path in
