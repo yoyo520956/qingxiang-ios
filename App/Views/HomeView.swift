@@ -26,7 +26,7 @@ struct HomeView: View {
                                 onPlay(item.asMediaItem)
                             },
                             onDownload: { item in
-                                onDownload(title: item.title, url: item.url, kind: item.kind)
+                                onDownload(item.title, item.url, item.kind)
                             }
                         )
                     }
