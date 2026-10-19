@@ -3,7 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @ObservedObject var store: MediaStore
     let onPlay: (MediaItem) -> Void
-    let onDownload: (title: String, url: String, kind: String) -> Void
+    let onDownload: (_ title: String, _ url: String, _ kind: String) -> Void
 
     private let content = HomeLibrary.load()
 
