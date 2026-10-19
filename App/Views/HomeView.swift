@@ -143,7 +143,7 @@ struct SearchSection: View {
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(Capsule().fill(sourceId == p.id ? Color.accentColor : Color(.systemGray5)))
-                        .foregroundStyle(sourceId == p.id ? .white : .primary)
+                        .foregroundStyle(sourceId == p.id ? Color.white : Color.primary)
                         .buttonStyle(.plain)
                     }
                 }
