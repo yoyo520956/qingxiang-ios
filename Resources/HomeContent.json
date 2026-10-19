@@ -1,1 +1,72 @@
-m��
+{
+  "channels": [
+    {
+      "id": "featured",
+      "name": "推荐",
+      "icon": "flame.fill",
+      "note": "打开即看 · 公有资源",
+      "items": [
+        {"id": "f1", "title": "大雄兔 Big Buck Bunny · 720P", "url": "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_2MB.mp4", "kind": "video", "note": "Blender 开源动画"},
+        {"id": "f2", "title": "辛特尔 Sintel · 720P", "url": "https://test-videos.co.uk/vids/sintel/mp4/h264/720/Sintel_720_10s_2MB.mp4", "kind": "video", "note": "Blender 开源动画"},
+        {"id": "f3", "title": "水母 Jellyfish · 720P", "url": "https://test-videos.co.uk/vids/jellyfish/mp4/h264/720/Jellyfish_720_10s_2MB.mp4", "kind": "video", "note": "Blender 开源影片"},
+        {"id": "f4", "title": "格里格 · 霍尔堡组曲 I. 序曲", "url": "https://upload.wikimedia.org/wikipedia/commons/0/08/Grieg%27s_Suite_for_Strings%2C_Op._40%2C_%22From_Holberg%E2%80%99s_Time%22_-_I._Praeludium_-_Chamber_Orchestra_-_United_States_Marine_Band.mp3", "kind": "audio", "note": "公有领域"}
+      ]
+    },
+    {
+      "id": "short",
+      "name": "短视频",
+      "icon": "bolt.fill",
+      "note": "10 秒短片 · 小流量",
+      "items": [
+        {"id": "s1", "title": "大雄兔 · 360P 短版", "url": "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4", "kind": "video"},
+        {"id": "s2", "title": "辛特尔 · 360P 短版", "url": "https://test-videos.co.uk/vids/sintel/mp4/h264/360/Sintel_360_10s_1MB.mp4", "kind": "video"},
+        {"id": "s3", "title": "水母 · 360P 短版", "url": "https://test-videos.co.uk/vids/jellyfish/mp4/h264/360/Jellyfish_360_10s_1MB.mp4", "kind": "video"}
+      ]
+    },
+    {
+      "id": "anime",
+      "name": "动漫",
+      "icon": "sparkles",
+      "note": "Blender 开源动画 · CC-BY",
+      "items": [
+        {"id": "a1", "title": "大雄兔 · 720P", "url": "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_2MB.mp4", "kind": "video"},
+        {"id": "a2", "title": "大雄兔 · 360P", "url": "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4", "kind": "video"},
+        {"id": "a3", "title": "辛特尔 · 720P", "url": "https://test-videos.co.uk/vids/sintel/mp4/h264/720/Sintel_720_10s_2MB.mp4", "kind": "video"}
+      ]
+    },
+    {
+      "id": "drama",
+      "name": "电视剧·电影",
+      "icon": "tv.fill",
+      "note": "公有领域影片片段",
+      "items": [
+        {"id": "d1", "title": "辛特尔 · 720P", "url": "https://test-videos.co.uk/vids/sintel/mp4/h264/720/Sintel_720_10s_2MB.mp4", "kind": "video"},
+        {"id": "d2", "title": "辛特尔 · 360P", "url": "https://test-videos.co.uk/vids/sintel/mp4/h264/360/Sintel_360_10s_1MB.mp4", "kind": "video"},
+        {"id": "d3", "title": "水母 · 720P", "url": "https://test-videos.co.uk/vids/jellyfish/mp4/h264/720/Jellyfish_720_10s_2MB.mp4", "kind": "video"},
+        {"id": "d4", "title": "水母 · 360P", "url": "https://test-videos.co.uk/vids/jellyfish/mp4/h264/360/Jellyfish_360_10s_1MB.mp4", "kind": "video"}
+      ]
+    },
+    {
+      "id": "comic",
+      "name": "漫剧",
+      "icon": "books.vertical.fill",
+      "note": "公有领域剧目与配乐",
+      "items": [
+        {"id": "c1", "title": "水母 · 动态片段", "url": "https://test-videos.co.uk/vids/jellyfish/mp4/h264/360/Jellyfish_360_10s_1MB.mp4", "kind": "video"},
+        {"id": "c2", "title": "格里格 · 霍尔堡组曲 II. 萨拉班德", "url": "https://upload.wikimedia.org/wikipedia/commons/2/20/Grieg%27s_Suite_for_Strings%2C_Op._40%2C_%22From_Holberg%E2%80%99s_Time%22_-_II._Sarabande_-_Chamber_Orchestra_-_United_States_Marine_Band.mp3", "kind": "audio"},
+        {"id": "c3", "title": "贝多芬 · 悲怆奏鸣曲 II. 广板", "url": "https://upload.wikimedia.org/wikipedia/commons/6/63/Beethoven%2C_Sonata_No._8_in_C_Minor_Pathetique%2C_Op._13_-_II._Adagio_cantabile.ogg", "kind": "audio"}
+      ]
+    },
+    {
+      "id": "music",
+      "name": "音乐",
+      "icon": "music.note",
+      "note": "公有领域 · 可下载离线听",
+      "items": [
+        {"id": "m1", "title": "格里格 · 霍尔堡组曲 I. 序曲", "url": "https://upload.wikimedia.org/wikipedia/commons/0/08/Grieg%27s_Suite_for_Strings%2C_Op._40%2C_%22From_Holberg%E2%80%99s_Time%22_-_I._Praeludium_-_Chamber_Orchestra_-_United_States_Marine_Band.mp3", "kind": "audio"},
+        {"id": "m2", "title": "格里格 · 霍尔堡组曲 II. 萨拉班德", "url": "https://upload.wikimedia.org/wikipedia/commons/2/20/Grieg%27s_Suite_for_Strings%2C_Op._40%2C_%22From_Holberg%E2%80%99s_Time%22_-_II._Sarabande_-_Chamber_Orchestra_-_United_States_Marine_Band.mp3", "kind": "audio"},
+        {"id": "m3", "title": "贝多芬 · 悲怆奏鸣曲 II. 广板", "url": "https://upload.wikimedia.org/wikipedia/commons/6/63/Beethoven%2C_Sonata_No._8_in_C_Minor_Pathetique%2C_Op._13_-_II._Adagio_cantabile.ogg", "kind": "audio"}
+      ]
+    }
+  ]
+}
