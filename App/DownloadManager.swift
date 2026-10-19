@@ -1,4 +1,3 @@
-import AVFoundation
 import Foundation
 
 final class DownloadManager: NSObject, ObservableObject {
@@ -18,14 +17,12 @@ final class DownloadManager: NSObject, ObservableObject {
         var localPath: String?
         var failMsg: String?
         var libraryItemId: String?
+        var resumeData: Data?
     }
 
     @Published var entries: [Entry] = []
 
-    private var assetTasks: [String: AVAssetDownloadTask] = [:]
-    private var taskForEntry: [ObjectIdentifier: String] = [:]
     private var httpTasks: [String: URLSessionDownloadTask] = [:]
-    private var progressObs: [String: NSKeyValueObservation] = [:]
     private let session: URLSession
     private let downloadsDir: URL
     private let tmpDir: URL
@@ -63,49 +60,57 @@ final class DownloadManager: NSObject, ObservableObject {
     // MARK: - 操作
 
     func start(title: String, url: String, kind: String) {
+        if url.hasSuffix(".m3u8") || url.contains(".m3u8") {
+            let id = UUID().uuidString
+            let entry = Entry(id: id, title: title, url: url, kind: kind, status: .failed, progress: 0, localPath: nil, failMsg: "HLS 在线源暂不支持下载，仅支持在线播放", libraryItemId: nil, resumeData: nil)
+            entries.insert(entry, at: 0)
+            saveMeta()
+            return
+        }
         let id = UUID().uuidString
-        let entry = Entry(id: id, title: title, url: url, kind: kind, status: .queued, progress: 0, localPath: nil, failMsg: nil, libraryItemId: nil)
+        let entry = Entry(id: id, title: title, url: url, kind: kind, status: .queued, progress: 0, localPath: nil, failMsg: nil, libraryItemId: nil, resumeData: nil)
         entries.insert(entry, at: 0)
         saveMeta()
-        run(id)
+        run(id, withResume: false)
     }
 
     func retry(_ id: String) {
         guard let idx = entries.firstIndex(where: { $0.id == id }) else { return }
-        entries[idx].status = .queued
         entries[idx].progress = 0
         entries[idx].failMsg = nil
         saveMeta()
-        run(id)
+        run(id, withResume: false)
     }
 
     func pause(_ id: String) {
-        assetTasks[id]?.pause()
-        guard let idx = entries.firstIndex(where: { $0.id == id }) else { return }
-        entries[idx].status = .paused
-        saveMeta()
+        guard let idx = entries.firstIndex(where: { $0.id == id }),
+              let task = httpTasks[id] else { return }
+        task.cancel(byProducingResumeData: { [weak self] data in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if let i = self.entries.firstIndex(where: { $0.id == id }) {
+                    self.entries[i].status = .paused
+                    self.entries[i].resumeData = data
+                    self.httpTasks.removeValue(forKey: id)
+                    self.saveMeta()
+                }
+            }
+        })
     }
 
     func resume(_ id: String) {
-        guard let task = assetTasks[id] else {
-            retry(id)
-            return
-        }
-        task.resume()
         guard let idx = entries.firstIndex(where: { $0.id == id }) else { return }
-        entries[idx].status = .downloading
-        saveMeta()
+        run(id, withResume: entries[idx].resumeData != nil)
     }
 
     func cancel(_ id: String) {
-        assetTasks[id]?.cancel()
-        httpTasks[id]?.cancel()
-        progressObs.removeValue(forKey: id)?.invalidate()
-        assetTasks.removeValue(forKey: id)
+        if let task = httpTasks[id] {
+            task.cancel()
+        }
         httpTasks.removeValue(forKey: id)
-        try? FileManager.default.removeItem(at: tmpDir.appendingPathComponent(id + ".mp4"))
         guard let idx = entries.firstIndex(where: { $0.id == id }) else { return }
         entries[idx].status = .cancelled
+        entries[idx].resumeData = nil
         saveMeta()
     }
 
@@ -120,12 +125,12 @@ final class DownloadManager: NSObject, ObservableObject {
 
     func mediaItem(for id: String) -> MediaItem? {
         guard let e = entries.first(where: { $0.id == id }),
-              FileManager.default.fileExists(atPath: e.localPath ?? "") else { return nil }
+              let p = e.localPath,
+              FileManager.default.fileExists(atPath: p) else { return nil }
         if let libId = e.libraryItemId, let uuid = UUID(uuidString: libId) {
             return MediaStore.shared.item(withID: uuid)
         }
-        // 兜底：老数据没存 id 的补注册一次
-        let item = MediaStore.shared.adopt(file: URL(fileURLWithPath: e.localPath!), title: e.title, sourceLabel: "已下载")
+        let item = MediaStore.shared.adopt(file: URL(fileURLWithPath: p), title: e.title, sourceLabel: "已下载")
         if let i = entries.firstIndex(where: { $0.id == id }) {
             entries[i].libraryItemId = item.id.uuidString
             saveMeta()
@@ -135,109 +140,62 @@ final class DownloadManager: NSObject, ObservableObject {
 
     // MARK: - 执行
 
-    private func run(_ id: String) {
+    private func run(_ id: String, withResume: Bool) {
         guard let idx = entries.firstIndex(where: { $0.id == id }) else { return }
         guard let u = URL(string: entries[idx].url) else {
             fail(id, "链接无效")
             return
         }
-        entries[idx].status = .downloading
-        saveMeta()
-        if entries[idx].kind == "audio" {
-            startHTTP(id, url: u)
+        let task: URLSessionDownloadTask
+        if withResume, let rd = entries[idx].resumeData {
+            task = session.downloadTask(withResumeData: rd)
         } else {
-            startAsset(id, url: u)
+            task = session.downloadTask(with: u)
         }
-    }
-
-    private func startAsset(_ id: String, url: URL) {
-        let asset = AVURLAsset(url: url)
-        let dest = tmpDir.appendingPathComponent(id + ".mp4")
-        do {
-            let task = try asset.downloadTask(for: dest)
-            assetTasks[id] = task
-            taskForEntry[ObjectIdentifier(task)] = id
-            task.delegate = self
-            task.start()
-            progressObs[id]?.invalidate()
-            progressObs[id] = task.observe(\.progress) { [weak self] t, _ in
-                DispatchQueue.main.async {
-                    guard let self else { return }
-                    if let i = self.entries.firstIndex(where: { $0.id == id }) {
-                        self.entries[i].progress = Double(t.progress)
-                    }
-                }
-            }
-        } catch {
-            fail(id, "无法启动下载任务")
+        task.taskDescription = id
+        httpTasks[id] = task
+        entries[idx].status = .downloading
+        if withResume {
+            entries[idx].progress = 0
         }
-    }
-
-    private func startHTTP(_ id: String, url: URL) {
-        let t = session.downloadTask(with: url)
-        t.taskDescription = id
-        httpTasks[id] = t
-        t.resume()
+        saveMeta()
+        task.resume()
     }
 
     private func fail(_ id: String, _ msg: String) {
         guard let idx = entries.firstIndex(where: { $0.id == id }) else { return }
         entries[idx].status = .failed
         entries[idx].failMsg = msg
+        httpTasks.removeValue(forKey: id)
         saveMeta()
     }
 
-    private func finish(id: String, fileFrom: URL?, suggestedName: String) {
+    private func finish(id: String, fileFrom: URL) {
         guard let idx = entries.firstIndex(where: { $0.id == id }) else { return }
-        let ext = suggestedName.pathExtension.isEmpty ? "mp4" : suggestedName.pathExtension
-        let finalURL = downloadsDir.appendingPathComponent(entries[idx].id + "." + ext)
-        if let src = fileFrom {
-            do {
-                try? FileManager.default.removeItem(at: finalURL)
-                try FileManager.default.moveItem(at: src, to: finalURL)
-            } catch {
-                fail(id, "文件移动失败")
-                return
-            }
+        let ext = URL(fileURLWithPath: entries[idx].url.absoluteString).pathExtension
+        let finalExt = ext.isEmpty ? (entries[idx].kind == "audio" ? "mp3" : "mp4") : ext
+        let finalURL = downloadsDir.appendingPathComponent(entries[idx].id + "." + finalExt)
+        do {
+            try? FileManager.default.removeItem(at: finalURL)
+            try FileManager.default.moveItem(at: fileFrom, to: finalURL)
+        } catch {
+            fail(id, "文件移动失败")
+            return
         }
-        progressObs.removeValue(forKey: id)?.invalidate()
-        assetTasks.removeValue(forKey: id)
         httpTasks.removeValue(forKey: id)
         entries[idx].status = .complete
         entries[idx].progress = 1
         entries[idx].localPath = finalURL.path
+        entries[idx].resumeData = nil
         saveMeta()
-        // 注册进片库
         let item = MediaStore.shared.adopt(file: finalURL, title: entries[idx].title, sourceLabel: "已下载")
-        if let i = entries.firstIndex(where: { $0.id == id }) {
-            entries[i].libraryItemId = item.id.uuidString
-        }
+        entries[idx].libraryItemId = item.id.uuidString
         saveMeta()
-        ThumbnailGen.generate(for: item) { path in
-            if let path {
-                MediaStore.shared.thumbCache[item.id] = path
-            }
-        }
-    }
-}
-
-// MARK: - AVAssetDownloadTaskDelegate
-
-extension DownloadManager: AVAssetDownloadTaskDelegate {
-    func assetDownloadTask(_ task: AVAssetDownloadTask, didFinishTo fileURL: URL) {
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            if let id = self.taskForEntry[ObjectIdentifier(task)] {
-                self.finish(id: id, fileFrom: fileURL, suggestedName: fileURL.deletingPathExtension().appendingPathExtension("mp4").lastPathComponent)
-            }
-        }
-    }
-
-    func assetDownloadTask(_ task: AVAssetDownloadTask, didFailWithError error: Error) {
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            if let id = self.taskForEntry[ObjectIdentifier(task)] {
-                self.fail(id, error.localizedDescription)
+        if entries[idx].kind != "audio" {
+            ThumbnailGen.generate(for: item) { path in
+                if let path {
+                    MediaStore.shared.thumbCache[item.id] = path
+                }
             }
         }
     }
@@ -247,24 +205,28 @@ extension DownloadManager: AVAssetDownloadTaskDelegate {
 
 extension DownloadManager: URLSessionDownloadDelegate {
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWrite bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
-        guard let id = downloadTask.taskDescription, totalBytesExpectedToWrite > 0 else { return }
-        let p = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
-        DispatchQueue.main.async { [weak self] in
-            guard let self, let i = self.entries.firstIndex(where: { $0.id == id }) else { return }
-            self.entries[i].progress = p
+        guard let id = downloadTask.taskDescription else { return }
+        if totalBytesExpectedToWrite > 0 {
+            let p = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
+            DispatchQueue.main.async { [weak self] in
+                guard let self, let i = self.entries.firstIndex(where: { $0.id == id }) else { return }
+                self.entries[i].progress = min(1.0, p)
+            }
         }
     }
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
         guard let id = downloadTask.taskDescription else { return }
-        let ext = location.pathExtension.isEmpty ? "mp3" : location.pathExtension
         DispatchQueue.main.async { [weak self] in
-            self?.finish(id: id, fileFrom: location, suggestedName: "audio.\(ext)")
+            self?.finish(id: id, fileFrom: location)
         }
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         guard let id = task.taskDescription, let error else { return }
+        if (error as NSError).code == NSURLErrorCancelled {
+            return
+        }
         DispatchQueue.main.async { [weak self] in
             self?.fail(id, error.localizedDescription)
         }
