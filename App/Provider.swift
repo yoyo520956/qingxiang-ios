@@ -59,7 +59,7 @@ enum ProviderKit {
             throw MediaSearch.SearchError(msg: "接口地址无效")
         }
         var req = URLRequest(url: url)
-        req.setValue("application/json, text/html;q=0.9", forValue: "Accept")
+        req.setValue("application/json, text/html;q=0.9", forHTTPHeaderField: "Accept")
         let (data, _) = try await URLSession.shared.data(for: req)
         guard let root = try? JSONSerialization.jsonObject(with: data) else {
             throw MediaSearch.SearchError(msg: "源没有返回可解析的数据")
