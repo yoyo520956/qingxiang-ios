@@ -76,10 +76,13 @@ struct AddView: View {
             var count = 0
             for it in items {
                 if let data = try? await it.loadTransferable(type: Data.self), data.count > 1024 {
-                    let types = (try? await it.supportedTypes) ?? []
-                    let mime = types.first?.preferredMIMEType ?? "video/mp4"
-                    let ext = mime.split(separator: "/").last.map(String.init) ?? "mp4"
-                    let name = "相册视频-\(Int(Date().timeIntervalSince1970)).\(ext)"
+                    let ts = Int(Date().timeIntervalSince1970)
+                    let name: String
+                    if #available(iOS 16.4, *), let sf = it.suggestedFilename {
+                        name = sf
+                    } else {
+                        name = "相册视频-\(ts)"
+                    }
                     if let item = try? store.copyVideo(data: data, suggestedName: name, sourceLabel: "相册") {
                         count += 1
                         ThumbnailGen.generate(for: item) { path in
